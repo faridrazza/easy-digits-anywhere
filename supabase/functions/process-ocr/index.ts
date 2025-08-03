@@ -221,10 +221,19 @@ async function processWithGoogleVision(imageUrl: string): Promise<ExtractedTable
   // Check if we have service account credentials
   const hasServiceAccount = Deno.env.get('GOOGLE_CLIENT_EMAIL') && Deno.env.get('GOOGLE_PRIVATE_KEY')
   
+  // Always try Gemini first for better table extraction
+  console.log('Attempting Gemini Vision processing for better table extraction')
+  const geminiResult = await processWithGeminiVision(imageUrl)
+  
+  // If Gemini returns good data, use it
+  if (geminiResult.rows.length > 0) {
+    console.log('Gemini Vision successful, using results')
+    return geminiResult
+  }
+  
   if (!hasServiceAccount) {
-    console.log('No Google credentials found, using alternative approach')
-    // Try to use Gemini or Document AI approach
-    return processWithGeminiVision(imageUrl)
+    console.log('No Google credentials found and Gemini failed, returning empty')
+    return getEmptyData()
   }
 
   try {
@@ -257,8 +266,8 @@ async function processWithGoogleVision(imageUrl: string): Promise<ExtractedTable
     
   } catch (error) {
     console.error('Vision API processing error:', error)
-    // Fallback to Gemini
-    return processWithGeminiVision(imageUrl)
+    // Return empty data since Gemini was already tried first
+    return getEmptyData()
   }
 }
 
@@ -360,8 +369,8 @@ async function processWithGeminiVision(imageUrl: string): Promise<ExtractedTable
   const apiKey = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY')
   
   if (!apiKey) {
-    console.log('No API key found, using demo data')
-    return getDemoData()
+    console.log('No API key found, returning empty data')
+    return getEmptyData()
   }
   
   try {
@@ -380,23 +389,31 @@ async function processWithGeminiVision(imageUrl: string): Promise<ExtractedTable
         contents: [{
           parts: [
             {
-              text: `Extract all data from this table/document and return it in the following JSON format:
+              text: `Extract the table data from this image and return it as JSON.
+
+Format (no markdown, no explanation):
 {
-  "headers": ["column1", "column2", ...],
+  "headers": ["Column1", "Column2", "Column3"],
   "rows": [
-    {"column1": "value1", "column2": "value2", ...},
-    ...
+    {"Column1": "value1", "Column2": "value2", "Column3": "value3"},
+    {"Column1": "value4", "Column2": "value5", "Column3": "value6"}
   ]
 }
 
-Important:
-- Preserve the exact table structure
-- Keep all column headers exactly as they appear
-- Maintain data types (numbers as numbers, not strings)
-- Include ALL rows and columns
-- If there are merged cells, repeat the value in each cell
-- For empty cells, use empty string ""
-- Return ONLY the JSON, no explanation`
+RULES:
+1. Use exact header names from the image
+2. Include all rows of data
+3. All values as strings
+4. Empty cells = ""
+5. NO demo/test data
+
+Example: For this table:
+CustomerID | CustomerName | LastName | Country | Age
+    1      |   Shubham    |  Thakur  |  India  | 23
+    2      |    Aman      |  Chopra  |Australia| 21
+
+Return:
+{"headers": ["CustomerID", "CustomerName", "LastName", "Country", "Age"], "rows": [{"CustomerID": "1", "CustomerName": "Shubham", "LastName": "Thakur", "Country": "India", "Age": "23"}, {"CustomerID": "2", "CustomerName": "Aman", "LastName": "Chopra", "Country": "Australia", "Age": "21"}]}`
             },
             {
               inline_data: {
@@ -437,7 +454,7 @@ Important:
     console.error('Gemini Vision error:', error)
   }
   
-  return getDemoData()
+  return getEmptyData()
 }
 
 function extractTableFromDocumentText(textAnnotation: any): ExtractedTableData {
@@ -542,26 +559,207 @@ function parseDocumentAITable(table: any, page: any): ExtractedTableData {
 }
 
 function parseTextAsTable(text: string): ExtractedTableData {
-  const lines = text.split('\n').filter(line => line.trim())
-  if (lines.length < 2) {
+  console.log('Parsing OCR text:', text)
+  
+  // Split into words and clean up
+  const words = text.split(/\s+/).filter(word => word.trim() && word.length > 0)
+  
+  if (words.length < 6) { // Need at least headers + one row
     return { headers: [], rows: [], confidence: 0 }
   }
   
-  // Detect table structure by looking for consistent delimiters
-  const delimiter = detectDelimiter(lines)
+  // Use intelligent parsing based on common table patterns
+  return parseTableByPattern(words)
+}
+
+function parseTableByPattern(words: string[]): ExtractedTableData {
+  console.log('All extracted words:', words)
   
-  // Parse headers
-  const headers = lines[0].split(delimiter).map(h => h.trim()).filter(h => h)
+  // Strategy: Auto-detect table structure by finding numeric row indicators
+  const numericPattern = /^\d+$/
   
-  // Parse rows
+  // Find row numbers to determine table structure
+  const rowNumbers: number[] = []
+  const nonNumericWords: string[] = []
+  
+  words.forEach(word => {
+    if (numericPattern.test(word)) {
+      const num = parseInt(word)
+      if (num >= 1 && num <= 20) { // Reasonable row number range
+        rowNumbers.push(num)
+      }
+    } else {
+      nonNumericWords.push(word)
+    }
+  })
+  
+  console.log('Row numbers found:', rowNumbers.sort((a, b) => a - b))
+  console.log('Non-numeric words:', nonNumericWords)
+  
+  // If we have sequential row numbers, we can determine column count
+  if (rowNumbers.length >= 2) {
+    const sortedRowNumbers = rowNumbers.sort((a, b) => a - b)
+    const maxRowNumber = sortedRowNumbers[sortedRowNumbers.length - 1]
+    const minRowNumber = sortedRowNumbers[0]
+    
+    // Check if we have reasonable sequential numbers
+    const numberOfRows = maxRowNumber - minRowNumber + 1
+    const isSequential = sortedRowNumbers.length === numberOfRows
+    
+    console.log(`Row analysis: min=${minRowNumber}, max=${maxRowNumber}, total=${numberOfRows}, sequential=${isSequential}`)
+    
+    if (isSequential) {
+      // More sophisticated column calculation
+      // Find first row number position to help estimate structure
+      const firstRowIndex = words.findIndex(word => word === '1')
+      if (firstRowIndex > 0) {
+        // Headers are before first row number
+        const headerCount = firstRowIndex
+        console.log(`Header count from structure: ${headerCount}`)
+        
+        if (headerCount >= 2 && headerCount <= 10) {
+          return parseWithKnownStructure(words, headerCount, numberOfRows)
+        }
+      }
+      
+      // Fallback calculation
+      const totalDataWords = nonNumericWords.length
+      const estimatedColumns = Math.round(totalDataWords / numberOfRows)
+      
+      console.log(`Fallback calculation: ${totalDataWords} data words / ${numberOfRows} rows = ${estimatedColumns} columns`)
+      
+      if (estimatedColumns >= 2 && estimatedColumns <= 10) {
+        return parseWithKnownStructure(words, estimatedColumns, numberOfRows)
+      }
+    }
+  }
+  
+  // Fallback: Try common table patterns
+  console.log('Using pattern detection fallback')
+  return parseWithPatternDetection(words)
+}
+
+function parseWithKnownStructure(words: string[], columnCount: number, rowCount: number): ExtractedTableData {
+  console.log(`=== PARSING DEBUG ===`)
+  console.log('Input words:', words)
+  console.log(`Expected: ${columnCount} columns, ${rowCount} rows`)
+  
+  // Find the exact pattern: headers followed by row data
+  const firstRowNumIndex = words.findIndex(word => word === '1')
+  console.log('First row number "1" found at index:', firstRowNumIndex)
+  
+  if (firstRowNumIndex === -1) {
+    console.log('No row number "1" found, using fallback parsing')
+    return parseWithPatternDetection(words)
+  }
+  
+  // Headers are everything before the first row number
+  const headers = words.slice(0, firstRowNumIndex).filter(word => word.trim().length > 0)
+  console.log('Extracted headers:', headers)
+  
+  // Validate header count matches expected columns
+  if (headers.length !== columnCount) {
+    console.log(`Header count mismatch: got ${headers.length}, expected ${columnCount}`)
+    // Adjust column count to match actual headers
+    columnCount = headers.length
+  }
+  
+  // Extract all data after headers (including row numbers)
+  const allDataWords = words.slice(firstRowNumIndex)
+  console.log('All data words:', allDataWords)
+  
+  // Parse row by row, expecting: rowNumber, col1, col2, col3, col4
   const rows: Array<Record<string, string>> = []
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(delimiter).map(v => v.trim())
-    if (values.length >= headers.length * 0.8) { // Allow some missing columns
-      const row: Record<string, string> = {}
-      headers.forEach((header, index) => {
-        row[header] = values[index] || ''
-      })
+  let currentIndex = 0
+  
+  for (let rowNum = 1; rowNum <= rowCount && currentIndex < allDataWords.length; rowNum++) {
+    console.log(`\n--- Processing Row ${rowNum} ---`)
+    
+    // Skip the row number if it matches expected
+    if (allDataWords[currentIndex] === rowNum.toString()) {
+      console.log(`Skipping row number: ${allDataWords[currentIndex]}`)
+      currentIndex++
+    }
+    
+    // Extract data for this row
+    const rowData: Record<string, string> = {}
+    let hasData = false
+    
+    for (let col = 0; col < columnCount && currentIndex < allDataWords.length; col++) {
+      const value = allDataWords[currentIndex] || ''
+      
+      // Skip if this looks like the next row number
+      if (/^\d+$/.test(value) && parseInt(value) === rowNum + 1) {
+        console.log(`Found next row number ${value}, stopping current row`)
+        break
+      }
+      
+      rowData[headers[col] || `Column${col + 1}`] = value
+      if (value.trim()) hasData = true
+      
+      console.log(`  ${headers[col] || `Column${col + 1}`}: "${value}"`)
+      currentIndex++
+    }
+    
+    if (hasData) {
+      rows.push(rowData)
+      console.log('Added row:', rowData)
+    }
+  }
+  
+  console.log('=== FINAL RESULT ===')
+  console.log('Headers:', headers)
+  console.log('Rows:', rows)
+  console.log('==================')
+  
+  return {
+    headers,
+    rows,
+    confidence: 95
+  }
+}
+
+function parseWithPatternDetection(words: string[]): ExtractedTableData {
+  // Try to detect common table patterns when structure is unclear
+  const headerPatterns = [
+    /customer/i, /name/i, /id$/i, /age$/i, /country/i, /email/i, 
+    /phone/i, /amount/i, /price/i, /total/i, /date/i, /status/i
+  ]
+  
+  const headers: string[] = []
+  const dataWords: string[] = []
+  
+  // Find header-like words in first part of text
+  for (let i = 0; i < Math.min(10, words.length); i++) {
+    const word = words[i]
+    const isLikelyHeader = headerPatterns.some(pattern => pattern.test(word)) ||
+                          (word.length > 2 && !/^\d+$/.test(word))
+    
+    if (isLikelyHeader && headers.length < 8) {
+      headers.push(word)
+    }
+  }
+  
+  // If no clear headers, return empty
+  if (headers.length === 0) {
+    return { headers: [], rows: [], confidence: 0 }
+  }
+  
+  // Get remaining words as data
+  dataWords.push(...words.slice(headers.length))
+  
+  // Group into rows
+  const rows: Array<Record<string, string>> = []
+  const colCount = headers.length
+  
+  for (let i = 0; i < dataWords.length; i += colCount) {
+    const row: Record<string, string> = {}
+    
+    for (let j = 0; j < colCount; j++) {
+      row[headers[j]] = dataWords[i + j] || ''
+    }
+    
+    if (Object.values(row).some(v => v.trim())) {
       rows.push(row)
     }
   }
@@ -569,7 +767,7 @@ function parseTextAsTable(text: string): ExtractedTableData {
   return {
     headers,
     rows,
-    confidence: 85
+    confidence: 75
   }
 }
 
@@ -592,60 +790,11 @@ function detectDelimiter(lines: string[]): RegExp {
   return /\s+/ // Default to any whitespace
 }
 
-// Demo data for testing
-function getDemoData(): ExtractedTableData {
+// Return empty data instead of demo data
+function getEmptyData(): ExtractedTableData {
   return {
-    headers: ['e_id', 'e_name', 'e_salary', 'e_age', 'e_gender', 'e_dept'],
-    rows: [
-      {
-        'e_id': '1',
-        'e_name': 'Sam',
-        'e_salary': '95000',
-        'e_age': '45',
-        'e_gender': 'Male',
-        'e_dept': 'Operations'
-      },
-      {
-        'e_id': '2',
-        'e_name': 'Bob',
-        'e_salary': '80000',
-        'e_age': '21',
-        'e_gender': 'Male',
-        'e_dept': 'Support'
-      },
-      {
-        'e_id': '3',
-        'e_name': 'Anne',
-        'e_salary': '125000',
-        'e_age': '25',
-        'e_gender': 'Female',
-        'e_dept': 'Analytics'
-      },
-      {
-        'e_id': '4',
-        'e_name': 'Julia',
-        'e_salary': '73000',
-        'e_age': '30',
-        'e_gender': 'Female',
-        'e_dept': 'Analytics'
-      },
-      {
-        'e_id': '5',
-        'e_name': 'Matt',
-        'e_salary': '159000',
-        'e_age': '33',
-        'e_gender': 'Male',
-        'e_dept': 'Sales'
-      },
-      {
-        'e_id': '6',
-        'e_name': 'Jeff',
-        'e_salary': '112000',
-        'e_age': '27',
-        'e_gender': 'Male',
-        'e_dept': 'Operations'
-      }
-    ],
-    confidence: 95
+    headers: [],
+    rows: [],
+    confidence: 0
   }
 }
