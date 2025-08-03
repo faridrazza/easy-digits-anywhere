@@ -6,13 +6,17 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, FileText, Upload, Download } from 'lucide-react';
 
 export default function Auth() {
   const { user, signIn, signUp } = useAuth();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Get the default tab from URL params
+  const defaultTab = searchParams.get('tab') === 'signin' ? 'signin' : 'signup';
   
   // Form states
   const [signInEmail, setSignInEmail] = useState('');
@@ -114,7 +118,7 @@ export default function Auth() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="signin" className="w-full">
+              <Tabs defaultValue={defaultTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="signin">लॉगिन / Sign In</TabsTrigger>
                   <TabsTrigger value="signup">साइन अप / Sign Up</TabsTrigger>
