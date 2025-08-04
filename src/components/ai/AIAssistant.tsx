@@ -262,23 +262,20 @@ export default function AIAssistant({
     setIsLoading(true);
 
     try {
-      // Add user message
-      const { data: userMessageData, error: userError } = await supabase
-        .from('ai_messages')
-        .insert({
-          conversation_id: conversation.id,
-          role: 'user',
-          content: userMessage,
-          message_type: 'text'
-        })
-        .select()
-        .single();
+      // Add user message to local state immediately for better UX
+      const tempUserMessage: ExtendedAIMessage = {
+        id: `temp-${Date.now()}`, // Temporary ID
+        conversation_id: conversation.id,
+        role: 'user',
+        content: userMessage,
+        message_type: 'text',
+        metadata: {},
+        created_at: new Date().toISOString()
+      };
+      
+      setMessages(prev => [...prev, tempUserMessage]);
 
-      if (userError) throw userError;
-
-      setMessages(prev => [...prev, userMessageData as ExtendedAIMessage]);
-
-      // Process AI response
+      // Process AI request (Edge Function will handle storing both user and AI messages)
       const aiResponse = await processAIRequest(userMessage, conversation.id);
       
     } catch (error) {
