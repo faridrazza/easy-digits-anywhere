@@ -148,6 +148,105 @@ export interface Database {
           updated_at?: string
         }
       }
+      ai_conversations: {
+        Row: {
+          id: string
+          user_id: string
+          document_id: string
+          title: string
+          context_summary: string | null
+          last_message_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          document_id: string
+          title?: string
+          context_summary?: string | null
+          last_message_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          document_id?: string
+          title?: string
+          context_summary?: string | null
+          last_message_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      ai_messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          role: 'user' | 'assistant'
+          content: string
+          message_type: 'text' | 'action' | 'formula' | 'error'
+          metadata: any
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          role: 'user' | 'assistant'
+          content: string
+          message_type?: 'text' | 'action' | 'formula' | 'error'
+          metadata?: any
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          role?: 'user' | 'assistant'
+          content?: string
+          message_type?: 'text' | 'action' | 'formula' | 'error'
+          metadata?: any
+          created_at?: string
+        }
+      }
+      ai_actions: {
+        Row: {
+          id: string
+          conversation_id: string
+          message_id: string | null
+          action_type: 'cell_edit' | 'formula_add' | 'data_transform' | 'export' | 'analysis'
+          action_data: any
+          status: 'pending' | 'completed' | 'failed'
+          result_data: any | null
+          error_message: string | null
+          created_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          message_id?: string | null
+          action_type: 'cell_edit' | 'formula_add' | 'data_transform' | 'export' | 'analysis'
+          action_data?: any
+          status?: 'pending' | 'completed' | 'failed'
+          result_data?: any | null
+          error_message?: string | null
+          created_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          message_id?: string | null
+          action_type?: 'cell_edit' | 'formula_add' | 'data_transform' | 'export' | 'analysis'
+          action_data?: any
+          status?: 'pending' | 'completed' | 'failed'
+          result_data?: any | null
+          error_message?: string | null
+          created_at?: string
+          completed_at?: string | null
+        }
+      }
     }
   }
 }

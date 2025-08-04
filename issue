@@ -1,0 +1,108 @@
+chunk-I3COAS7K.js?v=eb1154ee:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+4chunk-I3COAS7K.js?v=eb1154ee:521 Warning: Encountered two children with the same key, `Text`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+    at tr
+    at _c8 (http://localhost:8080/src/components/ui/table.tsx:98:58)
+    at thead
+    at _c2 (http://localhost:8080/src/components/ui/table.tsx:44:61)
+    at table
+    at div
+    at _c (http://localhost:8080/src/components/ui/table.tsx:12:54)
+    at div
+    at div
+    at _c8 (http://localhost:8080/src/components/ui/card.tsx:84:61)
+    at div
+    at _c (http://localhost:8080/src/components/ui/card.tsx:12:53)
+    at div
+    at div
+    at div
+    at div
+    at FileWorkspace (http://localhost:8080/src/pages/FileWorkspace.tsx?t=1754313260403:26:24)
+    at RenderedRoute (http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=eb1154ee:4069:5)
+    at Routes (http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=eb1154ee:4508:5)
+    at Router (http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=eb1154ee:4451:15)
+    at BrowserRouter (http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=eb1154ee:5196:5)
+    at Provider (http://localhost:8080/node_modules/.vite/deps/chunk-4RKXG7XO.js?v=eb1154ee:173:15)
+    at TooltipProvider (http://localhost:8080/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=eb1154ee:2292:5)
+    at AuthProvider (http://localhost:8080/src/hooks/useAuth.tsx:14:32)
+    at QueryClientProvider (http://localhost:8080/node_modules/.vite/deps/@tanstack_react-query.js?v=eb1154ee:2794:3)
+    at App
+printWarning @ chunk-I3COAS7K.js?v=eb1154ee:521
+error @ chunk-I3COAS7K.js?v=eb1154ee:505
+warnOnInvalidKey @ chunk-I3COAS7K.js?v=eb1154ee:10219
+reconcileChildrenArray @ chunk-I3COAS7K.js?v=eb1154ee:10235
+reconcileChildFibers2 @ chunk-I3COAS7K.js?v=eb1154ee:10559
+reconcileChildren @ chunk-I3COAS7K.js?v=eb1154ee:14290
+updateFragment @ chunk-I3COAS7K.js?v=eb1154ee:14522
+beginWork @ chunk-I3COAS7K.js?v=eb1154ee:15949
+beginWork$1 @ chunk-I3COAS7K.js?v=eb1154ee:19753
+performUnitOfWork @ chunk-I3COAS7K.js?v=eb1154ee:19198
+workLoopSync @ chunk-I3COAS7K.js?v=eb1154ee:19137
+renderRootSync @ chunk-I3COAS7K.js?v=eb1154ee:19116
+performConcurrentWorkOnRoot @ chunk-I3COAS7K.js?v=eb1154ee:18678
+workLoop @ chunk-I3COAS7K.js?v=eb1154ee:197
+flushWork @ chunk-I3COAS7K.js?v=eb1154ee:176
+performWorkUntilDeadline @ chunk-I3COAS7K.js?v=eb1154ee:384Understand this error
+44chunk-I3COAS7K.js?v=eb1154ee:521 Warning: Encountered two children with the same key, `Text`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+    at tr
+    at _c8 (http://localhost:8080/src/components/ui/table.tsx:98:58)
+    at tbody
+    at _c4 (http://localhost:8080/src/components/ui/table.tsx:62:59)
+    at table
+    at div
+    at _c (http://localhost:8080/src/components/ui/table.tsx:12:54)
+    at div
+    at div
+    at _c8 (http://localhost:8080/src/components/ui/card.tsx:84:61)
+    at div
+    at _c (http://localhost:8080/src/components/ui/card.tsx:12:53)
+    at div
+    at div
+    at div
+    at div
+    at FileWorkspace (http://localhost:8080/src/pages/FileWorkspace.tsx?t=1754313260403:26:24)
+    at RenderedRoute (http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=eb1154ee:4069:5)
+    at Routes (http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=eb1154ee:4508:5)
+    at Router (http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=eb1154ee:4451:15)
+    at BrowserRouter (http://localhost:8080/node_modules/.vite/deps/react-router-dom.js?v=eb1154ee:5196:5)
+    at Provider (http://localhost:8080/node_modules/.vite/deps/chunk-4RKXG7XO.js?v=eb1154ee:173:15)
+    at TooltipProvider (http://localhost:8080/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=eb1154ee:2292:5)
+    at AuthProvider (http://localhost:8080/src/hooks/useAuth.tsx:14:32)
+    at QueryClientProvider (http://localhost:8080/node_modules/.vite/deps/@tanstack_react-query.js?v=eb1154ee:2794:3)
+    at App
+printWarning @ chunk-I3COAS7K.js?v=eb1154ee:521
+error @ chunk-I3COAS7K.js?v=eb1154ee:505
+warnOnInvalidKey @ chunk-I3COAS7K.js?v=eb1154ee:10219
+reconcileChildrenArray @ chunk-I3COAS7K.js?v=eb1154ee:10235
+reconcileChildFibers2 @ chunk-I3COAS7K.js?v=eb1154ee:10559
+reconcileChildren @ chunk-I3COAS7K.js?v=eb1154ee:14290
+updateFragment @ chunk-I3COAS7K.js?v=eb1154ee:14522
+beginWork @ chunk-I3COAS7K.js?v=eb1154ee:15949
+beginWork$1 @ chunk-I3COAS7K.js?v=eb1154ee:19753
+performUnitOfWork @ chunk-I3COAS7K.js?v=eb1154ee:19198
+workLoopSync @ chunk-I3COAS7K.js?v=eb1154ee:19137
+renderRootSync @ chunk-I3COAS7K.js?v=eb1154ee:19116
+performConcurrentWorkOnRoot @ chunk-I3COAS7K.js?v=eb1154ee:18678
+workLoop @ chunk-I3COAS7K.js?v=eb1154ee:197
+flushWork @ chunk-I3COAS7K.js?v=eb1154ee:176
+performWorkUntilDeadline @ chunk-I3COAS7K.js?v=eb1154ee:384Understand this error
+@supabase_supabase-js.js?v=eb1154ee:3930  GET https://sulglgujzroyqnmaoazr.supabase.co/rest/v1/ai_conversations?select=*&document_id=eq.f79e5feb-693a-4b70-93d3-15b5a7c0786d 406 (Not Acceptable)
+(anonymous) @ @supabase_supabase-js.js?v=eb1154ee:3930
+(anonymous) @ @supabase_supabase-js.js?v=eb1154ee:3951
+fulfilled @ @supabase_supabase-js.js?v=eb1154ee:3903
+Promise.then
+step @ @supabase_supabase-js.js?v=eb1154ee:3916
+(anonymous) @ @supabase_supabase-js.js?v=eb1154ee:3918
+__awaiter6 @ @supabase_supabase-js.js?v=eb1154ee:3900
+(anonymous) @ @supabase_supabase-js.js?v=eb1154ee:3941
+then @ @supabase_supabase-js.js?v=eb1154ee:89Understand this error
+@supabase_supabase-js.js?v=eb1154ee:3930  POST https://sulglgujzroyqnmaoazr.supabase.co/rest/v1/ai_conversations?select=* 403 (Forbidden)
+(anonymous) @ @supabase_supabase-js.js?v=eb1154ee:3930
+(anonymous) @ @supabase_supabase-js.js?v=eb1154ee:3951
+fulfilled @ @supabase_supabase-js.js?v=eb1154ee:3903
+Promise.then
+step @ @supabase_supabase-js.js?v=eb1154ee:3916
+(anonymous) @ @supabase_supabase-js.js?v=eb1154ee:3918
+__awaiter6 @ @supabase_supabase-js.js?v=eb1154ee:3900
+(anonymous) @ @supabase_supabase-js.js?v=eb1154ee:3941
+then @ @supabase_supabase-js.js?v=eb1154ee:89Understand this error
+AIAssistant.tsx:96 Error initializing conversation: {code: '42501', details: null, hint: null, message: 'new row violates row-level security policy for table "ai_conversations"'}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -33,16 +33,19 @@ interface DashboardHomeProps {
   isProcessing: boolean;
   processingProgress: number;
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onFileSelect: (data: ExtractedData) => void;
 }
 
 export default function DashboardHome({ 
   extractedDataList, 
   isProcessing, 
   processingProgress, 
-  onFileUpload,
-  onFileSelect 
+  onFileUpload
 }: DashboardHomeProps) {
+  const navigate = useNavigate();
+
+  const handleFileSelect = (fileId: string) => {
+    navigate(`/files/${fileId}`);
+  };
   // Calculate stats
   const totalFiles = extractedDataList.length;
   const totalRecords = extractedDataList.reduce((sum, item) => sum + (item.data.rows?.length || 0), 0);
@@ -169,7 +172,7 @@ export default function DashboardHome({
                 <div
                   key={item.id}
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => onFileSelect(item)}
+                  onClick={() => handleFileSelect(item.id)}
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-primary/10 rounded-lg">

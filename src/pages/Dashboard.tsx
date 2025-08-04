@@ -295,9 +295,7 @@ export default function Dashboard() {
     });
   };
 
-  const handleFileSelect = (data: ExtractedData) => {
-    setActiveTab('files');
-  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary-glow/5">
@@ -348,19 +346,15 @@ export default function Dashboard() {
                 isProcessing={isProcessing}
                 processingProgress={processingProgress}
                 onFileUpload={processFiles}
-                onFileSelect={handleFileSelect}
               />
             ) : (
               <DashboardFiles
                 extractedDataList={extractedDataList}
                 onDeleteFile={deleteData}
-                onDownloadExcel={downloadExcel}
-                onDownloadCSV={downloadCSV}
-                onUpdateData={updateData}
               />
             )}
           </main>
-        </div>
+              </div>
       </div>
     </div>
   );

@@ -1,19 +1,13 @@
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
 import { 
   FileText, 
   Edit2,
   Trash2,
-  Save,
-  X,
   Eye,
-  FileSpreadsheet,
-  FileDown,
-  ArrowLeft
+  Sparkles
 } from 'lucide-react';
 
 interface ExtractedData {
@@ -32,171 +26,20 @@ interface ExtractedData {
   };
 }
 
-interface EditingCell {
-  rowIndex: number;
-  column: string;
-  value: string;
-}
-
 interface DashboardFilesProps {
   extractedDataList: ExtractedData[];
   onDeleteFile: (id: string) => void;
-  onDownloadExcel: (data: ExtractedData) => void;
-  onDownloadCSV: (data: ExtractedData) => void;
-  onUpdateData: (id: string, updatedData: any) => void;
 }
 
 export default function DashboardFiles({ 
   extractedDataList, 
-  onDeleteFile, 
-  onDownloadExcel, 
-  onDownloadCSV,
-  onUpdateData 
+  onDeleteFile
 }: DashboardFilesProps) {
-  const [selectedFile, setSelectedFile] = useState<ExtractedData | null>(null);
-  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const navigate = useNavigate();
 
-  const startEditingCell = (rowIndex: number, column: string, value: string) => {
-    setEditingCell({ rowIndex, column, value });
+  const handleViewFile = (fileId: string) => {
+    navigate(`/files/${fileId}`);
   };
-
-  const saveEdit = async () => {
-    if (!editingCell || !selectedFile) return;
-
-    const updatedRows = [...selectedFile.data.rows];
-    updatedRows[editingCell.rowIndex] = {
-      ...updatedRows[editingCell.rowIndex],
-      [editingCell.column]: editingCell.value
-    };
-
-    const updatedData = {
-      ...selectedFile,
-      data: {
-        ...selectedFile.data,
-        rows: updatedRows
-      },
-      is_edited: true
-    };
-
-    setSelectedFile(updatedData);
-    onUpdateData(selectedFile.id, updatedData.data);
-    setEditingCell(null);
-  };
-
-  const cancelEdit = () => {
-    setEditingCell(null);
-  };
-
-  if (selectedFile) {
-    return (
-      <div className="space-y-6">
-        {/* File View Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setSelectedFile(null)}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              वापस / Back
-            </Button>
-            <div>
-              <h2 className="text-xl font-semibold">{selectedFile.document?.filename || 'Unnamed'}</h2>
-              <p className="text-sm text-muted-foreground">
-                {selectedFile.data.rows?.length || 0} रिकॉर्ड्स / records • {Math.round(selectedFile.confidence)}% सटीकता / accuracy
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => onDownloadExcel(selectedFile)}>
-              <FileSpreadsheet className="h-3 w-3 mr-1" />
-              Excel
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => onDownloadCSV(selectedFile)}>
-              <FileDown className="h-3 w-3 mr-1" />
-              CSV
-            </Button>
-          </div>
-        </div>
-
-        {/* Data Table */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              डेटा टेबल / Data Table
-            </CardTitle>
-            <CardDescription>
-              डेटा संपादित करने के लिए किसी भी सेल पर क्लिक करें / Click on any cell to edit data
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {selectedFile.data.rows && selectedFile.data.rows.length > 0 ? (
-              <div className="rounded-md border overflow-auto max-h-96">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {selectedFile.data.headers.map((header) => (
-                        <TableHead key={header} className="font-semibold">
-                          {header}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedFile.data.rows.map((row, rowIndex) => (
-                      <TableRow key={rowIndex}>
-                        {selectedFile.data.headers.map((header) => (
-                          <TableCell 
-                            key={header} 
-                            className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => startEditingCell(rowIndex, header, row[header] || '')}
-                          >
-                            {editingCell && editingCell.rowIndex === rowIndex && editingCell.column === header ? (
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  value={editingCell.value}
-                                  onChange={(e) => setEditingCell({ ...editingCell, value: e.target.value })}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEdit();
-                                    if (e.key === 'Escape') cancelEdit();
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="h-7 px-2"
-                                  autoFocus
-                                />
-                                <Button size="sm" variant="ghost" onClick={saveEdit}>
-                                  <Save className="h-3 w-3" />
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-between group">
-                                <span>{row[header] || '-'}</span>
-                                <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </div>
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                <p>कोई डेटा उपलब्ध नहीं / No data available</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -248,11 +91,19 @@ export default function DashboardFiles({
                     <div className="flex items-center gap-2">
                       <Button
                         size="sm"
-                        onClick={() => setSelectedFile(item)}
+                        onClick={() => handleViewFile(item.id)}
                         className="bg-gradient-to-r from-primary to-primary-glow"
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         देखें / View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewFile(item.id)}
+                        title="Open with AI Assistant"
+                      >
+                        <Sparkles className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
