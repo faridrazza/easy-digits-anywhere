@@ -18,7 +18,13 @@ import {
   Zap,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Plus,
+  MessageSquare,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Edit3
 } from 'lucide-react';
 import { Database } from '@/lib/types';
 
@@ -51,12 +57,14 @@ export default function AIAssistant({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<AIConversation | null>(null);
+  const [conversations, setConversations] = useState<AIConversation[]>([]);
   const [isChatMode, setIsChatMode] = useState(true); // Default to chat mode
+  const [showConversations, setShowConversations] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user && documentId) {
-      initializeConversation();
+      loadConversations();
     }
   }, [documentId, user]);
 
@@ -66,51 +74,165 @@ export default function AIAssistant({
     }
   }, [messages]);
 
-  const initializeConversation = async () => {
+  const loadConversations = async () => {
     if (!user) {
       console.error('User not authenticated');
       return;
     }
 
     try {
-      // First, try to find existing conversation for this document (RLS automatically filters by user)
-      let { data: existingConversation, error: fetchError } = await supabase
+      // Load all conversations for this document
+      const { data: allConversations, error: fetchError } = await supabase
         .from('ai_conversations')
         .select('*')
         .eq('document_id', documentId)
-        .maybeSingle();
+        .order('last_message_at', { ascending: false });
 
       if (fetchError) {
-        console.error('Fetch conversation error:', fetchError);
+        console.error('Fetch conversations error:', fetchError);
         throw fetchError;
       }
 
-      if (!existingConversation) {
-        // Create new conversation with user_id
-        const { data: newConversation, error: createError } = await supabase
-          .from('ai_conversations')
-          .insert({
-            user_id: user.id,
-            document_id: documentId,
-            title: 'AI Assistant Chat',
-            context_summary: `Working with file containing ${fileData.headers.length} columns and ${fileData.rows.length} rows`
-          })
-          .select()
-          .single();
+      setConversations(allConversations || []);
 
-        if (createError) throw createError;
-        existingConversation = newConversation;
+      // If we have conversations, select the most recent one
+      if (allConversations && allConversations.length > 0) {
+        const mostRecentConversation = allConversations[0];
+        setConversation(mostRecentConversation);
+        await loadMessages(mostRecentConversation.id);
+      } else {
+        // No conversations exist, create the first one
+        await createNewConversation();
       }
-
-      setConversation(existingConversation);
-      await loadMessages(existingConversation.id);
     } catch (error) {
-      console.error('Error initializing conversation:', error);
+      console.error('Error loading conversations:', error);
       toast({
         title: "Error",
-        description: "Failed to initialize AI conversation",
+        description: "Failed to load conversations",
         variant: "destructive"
       });
+    }
+  };
+
+  const createNewConversation = async (title?: string) => {
+    if (!user) return;
+
+    try {
+      const conversationTitle = title || generateConversationTitle();
+      
+      const { data: newConversation, error: createError } = await supabase
+        .from('ai_conversations')
+        .insert({
+          user_id: user.id,
+          document_id: documentId,
+          title: conversationTitle,
+          context_summary: `Working with file containing ${fileData.headers.length} columns and ${fileData.rows.length} rows`
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      // Update conversations list
+      setConversations(prev => [newConversation, ...prev]);
+      setConversation(newConversation);
+      setMessages([]);
+      
+      toast({
+        title: "New Chat Started",
+        description: "Created a new conversation",
+      });
+
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create new conversation",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const switchConversation = async (conversationId: string) => {
+    const targetConversation = conversations.find(c => c.id === conversationId);
+    if (!targetConversation) return;
+
+    setConversation(targetConversation);
+    await loadMessages(conversationId);
+    setShowConversations(false);
+  };
+
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('ai_conversations')
+        .delete()
+        .eq('id', conversationId);
+
+      if (error) throw error;
+
+      // Update local state
+      const updatedConversations = conversations.filter(c => c.id !== conversationId);
+      setConversations(updatedConversations);
+
+      // If we deleted the active conversation, switch to another or create new
+      if (conversation?.id === conversationId) {
+        if (updatedConversations.length > 0) {
+          const nextConversation = updatedConversations[0];
+          setConversation(nextConversation);
+          await loadMessages(nextConversation.id);
+        } else {
+          await createNewConversation();
+        }
+      }
+
+      toast({
+        title: "Conversation Deleted",
+        description: "Conversation removed successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete conversation",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const generateConversationTitle = () => {
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const date = now.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return `Chat ${date} ${time}`;
+  };
+
+  const refreshConversations = async () => {
+    if (!user) return;
+
+    try {
+      const { data: allConversations, error: fetchError } = await supabase
+        .from('ai_conversations')
+        .select('*')
+        .eq('document_id', documentId)
+        .order('last_message_at', { ascending: false });
+
+      if (fetchError) {
+        console.error('Fetch conversations error:', fetchError);
+        return;
+      }
+
+      setConversations(allConversations || []);
+      
+      // Update current conversation if it exists in the refreshed list
+      if (conversation) {
+        const updatedConversation = allConversations?.find(c => c.id === conversation.id);
+        if (updatedConversation) {
+          setConversation(updatedConversation);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing conversations:', error);
     }
   };
 
@@ -195,6 +317,9 @@ export default function AIAssistant({
 
       // The Edge Function already stores the messages, so we just need to reload them
       await loadMessages(conversationId);
+      
+      // Refresh conversations list to get updated titles
+      await refreshConversations();
 
     } catch (error) {
       console.error('Error processing AI request:', error);
@@ -268,12 +393,31 @@ export default function AIAssistant({
       <CardHeader className="flex-shrink-0 pb-3">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowConversations(!showConversations)}
+              className="h-7 w-7 p-0"
+            >
+              {showConversations ? <ChevronRight className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+            </Button>
             <Sparkles className="h-5 w-5 text-primary" />
-            AI Assistant
+            <span className="text-sm font-medium truncate">
+              {conversation?.title || 'AI Assistant'}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => createNewConversation()}
+              className="h-7 px-2"
+              title="New Chat"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
             <span className="text-xs text-muted-foreground">
-              {isChatMode ? 'Chat Mode' : 'Formula Mode'}
+              {isChatMode ? 'Chat' : 'Formula'}
             </span>
             <Button
               variant={isChatMode ? "default" : "outline"}
@@ -286,6 +430,69 @@ export default function AIAssistant({
           </div>
         </CardTitle>
       </CardHeader>
+
+      {/* Conversations Sidebar */}
+      {showConversations && (
+        <div className="border-b">
+          <CardContent className="p-3">
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground mb-2">
+                <span>Conversations ({conversations.length})</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => createNewConversation()}
+                  className="h-6 px-2 text-xs"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  New
+                </Button>
+              </div>
+              {conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`group flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors ${
+                    conversation?.id === conv.id 
+                      ? 'bg-primary/10 border border-primary/20' 
+                      : 'hover:bg-muted/50'
+                  }`}
+                  onClick={() => switchConversation(conv.id)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {conv.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(conv.updated_at).toLocaleDateString([], { 
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteConversation(conv.id);
+                    }}
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              {conversations.length === 0 && (
+                <div className="text-center text-muted-foreground text-sm py-4">
+                  No conversations yet
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </div>
+      )}
       
       <CardContent className="flex-1 flex flex-col p-4 gap-4 min-h-0">
         {/* Messages Area */}

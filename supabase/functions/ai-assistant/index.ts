@@ -148,6 +148,9 @@ serve(async (req) => {
       throw new Error(`Failed to store AI message: ${aiMessageError.message}`)
     }
 
+    // Auto-generate conversation title based on first user message
+    await updateConversationTitle(supabaseClient, conversation, message)
+
     // Store any actions if present
     if (aiResponse.actions && aiResponse.actions.length > 0) {
       const actionPromises = aiResponse.actions.map(action => 
@@ -750,4 +753,58 @@ Would you like to know more about this data or search for something else?`
 • Ask about specific columns: ${headers.slice(0, 3).join(', ')}${headers.length > 3 ? '...' : ''}
 
 What would you like to explore?`
+}
+
+async function updateConversationTitle(
+  supabaseClient: any,
+  conversation: any,
+  userMessage: string
+) {
+  try {
+    // Only update if this is still the default title or empty
+    const isDefaultTitle = !conversation.title || 
+                          conversation.title === 'AI Assistant Chat' ||
+                          conversation.title.startsWith('Chat ');
+
+    if (!isDefaultTitle) return;
+
+    // Check if this is the first user message in the conversation
+    const { data: messageCount } = await supabaseClient
+      .from('ai_messages')
+      .select('id', { count: 'exact' })
+      .eq('conversation_id', conversation.id)
+      .eq('role', 'user');
+
+    if (messageCount && messageCount.length <= 1) {
+      // Generate title from first message
+      const title = generateTitleFromMessage(userMessage);
+      
+      await supabaseClient
+        .from('ai_conversations')
+        .update({ 
+          title: title,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversation.id);
+    }
+  } catch (error) {
+    console.error('Error updating conversation title:', error);
+    // Don't throw - this is not critical for the main flow
+  }
+}
+
+function generateTitleFromMessage(message: string): string {
+  // Clean and truncate the message
+  const cleanMessage = message
+    .replace(/[^\w\s]/gi, '') // Remove special characters
+    .trim()
+    .split(' ')
+    .slice(0, 4) // First 4 words
+    .join(' ');
+
+  if (cleanMessage.length > 30) {
+    return cleanMessage.substring(0, 27) + '...';
+  }
+
+  return cleanMessage || 'New Chat';
 }
