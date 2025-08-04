@@ -16,6 +16,7 @@ interface AIRequest {
     rows: Array<Record<string, string>>
   }
   messageType?: 'text' | 'action' | 'formula' | 'error'
+  chatMode?: boolean
 }
 
 interface AIResponse {
@@ -85,7 +86,7 @@ serve(async (req) => {
       })
     }
 
-    const { conversationId, message, fileData, messageType = 'text' }: AIRequest = await req.json()
+    const { conversationId, message, fileData, messageType = 'text', chatMode = false }: AIRequest = await req.json()
 
     console.log('Processing AI request:', { conversationId, message: message.substring(0, 100) })
 
@@ -114,7 +115,7 @@ serve(async (req) => {
     }
 
     // Process the AI request
-    const aiResponse = await processAIRequest(message, fileData, recentMessages || [])
+    const aiResponse = await processAIRequest(message, fileData, recentMessages || [], chatMode)
 
     // Store the user message
     const { error: userMessageError } = await supabaseClient
@@ -207,17 +208,18 @@ serve(async (req) => {
 async function processAIRequest(
   message: string, 
   fileData: { headers: string[], rows: Array<Record<string, string>> },
-  conversationHistory: Array<{ role: string, content: string, message_type: string }>
+  conversationHistory: Array<{ role: string, content: string, message_type: string }>,
+  chatMode: boolean = false
 ): Promise<AIResponse> {
   
-  const intent = analyzeUserIntent(message)
+  const intent = analyzeUserIntent(message, chatMode)
   
   // Prepare context for AI
   const dataContext = `
 File Data Summary:
 - Columns (${fileData.headers.length}): ${fileData.headers.join(', ')}
 - Rows: ${fileData.rows.length}
-- Sample data (first 3 rows): ${JSON.stringify(fileData.rows.slice(0, 3), null, 2)}
+- Complete data (all rows): ${JSON.stringify(fileData.rows, null, 2)}
 `
 
   const conversationContext = conversationHistory.length > 0 
@@ -244,13 +246,29 @@ File Data Summary:
   }
 }
 
-function analyzeUserIntent(message: string): { 
+function analyzeUserIntent(message: string, chatMode: boolean = false): { 
   type: string
   messageType: 'text' | 'action' | 'formula' | 'error'
   actions?: Array<{ type: 'cell_edit' | 'formula_add' | 'data_transform' | 'export' | 'analysis', data: any }>
 } {
   const lowerMessage = message.toLowerCase()
   
+  // In chat mode, treat most questions as general conversation
+  if (chatMode) {
+    // Only specific keywords should trigger formula mode in chat
+    if (lowerMessage.includes('create formula') || lowerMessage.includes('write formula') || lowerMessage.includes('give me formula')) {
+      return { 
+        type: 'formula_add', 
+        messageType: 'formula',
+        actions: [{ type: 'formula_add', data: { message } }]
+      }
+    }
+    
+    // Everything else in chat mode is conversational
+    return { type: 'chat_query', messageType: 'text' }
+  }
+  
+  // Formula mode (original behavior)
   // Cell editing patterns
   if (lowerMessage.includes('edit') || lowerMessage.includes('change') || lowerMessage.includes('update') && (lowerMessage.includes('cell') || lowerMessage.includes('row') || lowerMessage.includes('column'))) {
     return { 
@@ -296,13 +314,22 @@ async function callAnthropicAI(
   conversationContext: string,
   intent: any
 ): Promise<string> {
-  const systemPrompt = `You are an expert data analysis assistant for a spreadsheet application similar to Excel. You help users analyze, manipulate, and understand their data.
+  const systemPrompt = `You are an expert data analysis assistant for a spreadsheet application. You help users analyze, manipulate, and understand their data.
 
 Context about the current file:
 ${dataContext}
 
+${intent.type === 'chat_query' ? `
+**CHAT MODE - Conversational Responses Only**
+- Provide direct, simple answers to user questions
+- Do NOT suggest formulas unless explicitly asked
+- Be conversational and friendly
+- Answer questions about data directly (e.g., "Yes, Nishant is from Spain")
+- Keep responses concise and natural
+` : `
+**FORMULA MODE - Technical Assistance**
 Your capabilities:
-1. Data Analysis - Provide insights, statistics, and patterns in the data
+1. Data Analysis - Provide insights, statistics, and patterns
 2. Formula Suggestions - Recommend Excel-like formulas and calculations
 3. Data Validation - Check for errors, duplicates, and data quality issues
 4. Cell Editing - Help users modify specific data points
@@ -315,6 +342,7 @@ Guidelines:
 - Include specific examples when suggesting formulas
 - Always consider the user's data context when responding
 - If suggesting changes, be specific about rows, columns, and values
+`}
 
 Current user intent: ${intent.type}`
 
@@ -358,6 +386,15 @@ async function callOpenAI(
 Context about the current file:
 ${dataContext}
 
+${intent.type === 'chat_query' ? `
+**CHAT MODE - Conversational Responses Only**
+- Provide direct, simple answers to user questions
+- Do NOT suggest formulas unless explicitly asked
+- Be conversational and friendly
+- Answer questions about data directly (e.g., "Yes, Nishant is from Spain")
+- Keep responses concise and natural
+` : `
+**FORMULA MODE - Technical Assistance**
 Your capabilities:
 1. Data Analysis - Provide insights, statistics, and patterns
 2. Formula Suggestions - Recommend Excel-like formulas
@@ -372,6 +409,7 @@ Guidelines:
 - Include specific examples for formulas
 - Consider the user's data context
 - Be specific about rows, columns, and values when suggesting changes
+`}
 
 Current user intent: ${intent.type}`
 
@@ -410,6 +448,9 @@ async function fallbackAIResponse(
 
   // Enhanced fallback responses based on intent
   switch (intent.type) {
+    case 'chat_query':
+      return generateChatResponse(fileData, message)
+      
     case 'data_analysis':
       return generateDataAnalysis(fileData)
     
@@ -436,6 +477,76 @@ Use the download buttons in the toolbar above the table to export your data.`
     default:
       return generateHelpResponse(fileData, message)
   }
+}
+
+function generateChatResponse(fileData: { headers: string[], rows: Array<Record<string, string>> }, message: string): string {
+  const { headers, rows } = fileData
+  const lowerMessage = message.toLowerCase()
+  
+  // Handle questions about specific people/values
+  const words = message.toLowerCase().split(/\s+/)
+  for (const word of words) {
+    if (word.length > 2) {
+      // Search for this word in all data values
+      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        const row = rows[rowIndex]
+        for (const header of headers) {
+          const cellValue = row[header]?.toLowerCase() || ''
+          if (cellValue.includes(word)) {
+            // Found a match! Return simple conversational answer
+            const personName = row[headers.find(h => h.toLowerCase().includes('name')) || headers[0]] || word
+            const country = row[headers.find(h => h.toLowerCase().includes('country')) || ''] || 'unknown'
+            
+            if (lowerMessage.includes('country') || lowerMessage.includes('where') || lowerMessage.includes('from')) {
+              return `Yes, ${personName} exists in your data and is from ${country}.`
+            }
+            
+            // General info about the person
+            const info = headers.map(h => `${h}: ${row[h] || 'N/A'}`).join(', ')
+            return `Yes, I found ${personName} in your data. Here's their information: ${info}`
+          }
+        }
+      }
+    }
+  }
+  
+  // Handle general questions about data
+  if (lowerMessage.includes('how many') || lowerMessage.includes('count')) {
+    if (lowerMessage.includes('row') || lowerMessage.includes('record') || lowerMessage.includes('people') || lowerMessage.includes('customer')) {
+      return `You have ${rows.length} records in your data.`
+    }
+    if (lowerMessage.includes('column') || lowerMessage.includes('field')) {
+      return `You have ${headers.length} columns: ${headers.join(', ')}.`
+    }
+  }
+  
+  // Handle questions about data content
+  if (lowerMessage.includes('what') && (lowerMessage.includes('data') || lowerMessage.includes('information'))) {
+    return `Your data contains ${rows.length} records with ${headers.length} columns: ${headers.join(', ')}. Each record has information about customers including their personal details.`
+  }
+  
+  // Handle questions about insights
+  if (lowerMessage.includes('insight') || lowerMessage.includes('tell me about') || lowerMessage.includes('summary')) {
+    const countries = [...new Set(rows.map(row => row[headers.find(h => h.toLowerCase().includes('country')) || '']).filter(Boolean))]
+    const avgAge = rows.length > 0 ? Math.round(rows.reduce((sum, row) => {
+      const age = parseInt(row[headers.find(h => h.toLowerCase().includes('age')) || ''] || '0')
+      return sum + (isNaN(age) ? 0 : age)
+    }, 0) / rows.length) : 0
+    
+    return `Here's what I can tell you about your data:
+• You have ${rows.length} customers
+• They're from ${countries.length} different countries: ${countries.join(', ')}
+• Average age is ${avgAge} years
+• The youngest customer is ${Math.min(...rows.map(row => parseInt(row[headers.find(h => h.toLowerCase().includes('age')) || ''] || '0')).filter(age => !isNaN(age)))} and oldest is ${Math.max(...rows.map(row => parseInt(row[headers.find(h => h.toLowerCase().includes('age')) || ''] || '0')).filter(age => !isNaN(age)))}`
+  }
+  
+  return `I'm here to help you understand your data! You have ${rows.length} records with information about customers. You can ask me questions like:
+• "Is there a person named [name]?"
+• "What countries are represented?"
+• "Tell me about my data"
+• "How many customers do I have?"
+
+What would you like to know?`
 }
 
 function generateDataAnalysis(fileData: { headers: string[], rows: Array<Record<string, string>> }): string {
@@ -605,6 +716,30 @@ I can help you with your ${rows.length} rows and ${headers.length} columns of da
 • Sample values: ${Array.from(uniqueValues).slice(0, 5).join(', ')}${uniqueValues.size > 5 ? '...' : ''}
 
 What would you like to know about this column?`
+  }
+  
+  // Handle questions about specific data values (e.g., "tell me about Aditya")
+  const words = message.toLowerCase().split(/\s+/)
+  for (const word of words) {
+    if (word.length > 2) { // Only check words longer than 2 characters
+      // Search for this word in all data values
+      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        const row = rows[rowIndex]
+        for (const header of headers) {
+          const cellValue = row[header]?.toLowerCase() || ''
+          if (cellValue.includes(word)) {
+            // Found a match! Return information about this row
+            const rowData = headers.map(h => `**${h}**: ${row[h] || 'N/A'}`).join('\n')
+            return `🔍 **Found data for "${word}"**
+
+**Row ${rowIndex + 1} details:**
+${rowData}
+
+Would you like to know more about this data or search for something else?`
+          }
+        }
+      }
+    }
   }
   
   return `I'm here to help you work with your data! You have ${rows.length} rows and ${headers.length} columns.

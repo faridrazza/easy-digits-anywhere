@@ -51,6 +51,7 @@ export default function AIAssistant({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<AIConversation | null>(null);
+  const [isChatMode, setIsChatMode] = useState(true); // Default to chat mode
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -179,7 +180,8 @@ export default function AIAssistant({
             conversationId,
             message: userMessage,
             fileData,
-            messageType: 'text'
+            messageType: 'text',
+            chatMode: isChatMode
           }
         });
 
@@ -264,21 +266,41 @@ export default function AIAssistant({
   return (
     <Card className={`h-full flex flex-col ${className}`}>
       <CardHeader className="flex-shrink-0 pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          AI Assistant
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            AI Assistant
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {isChatMode ? 'Chat Mode' : 'Formula Mode'}
+            </span>
+            <Button
+              variant={isChatMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsChatMode(!isChatMode)}
+              className="h-7 px-2 text-xs"
+            >
+              {isChatMode ? '💬' : '📊'}
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col p-4 gap-4">
+      <CardContent className="flex-1 flex flex-col p-4 gap-4 min-h-0">
         {/* Messages Area */}
-        <ScrollArea className="flex-1" ref={scrollAreaRef}>
-          <div className="space-y-4">
+        <ScrollArea className="flex-1 min-h-0 max-h-full" ref={scrollAreaRef}>
+          <div className="space-y-4 pr-4">
             {messages.length === 0 && (
               <div className="text-center text-muted-foreground py-8">
                 <Bot className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>Hi! I'm your AI assistant.</p>
-                <p className="text-sm">Ask me anything about your data!</p>
+                <p className="text-sm">
+                  {isChatMode 
+                    ? "Ask me questions about your data in natural language!" 
+                    : "Request formulas, analysis, or technical help!"
+                  }
+                </p>
               </div>
             )}
             
@@ -342,12 +364,12 @@ export default function AIAssistant({
         </ScrollArea>
 
         {/* Input Area */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 border-t pt-4 -mx-4 px-4 bg-background">
           <div className="flex gap-2">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Ask me anything about your data..."
+              placeholder={isChatMode ? "Ask me anything about your data..." : "Ask for formulas, analysis, or help..."}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -367,24 +389,49 @@ export default function AIAssistant({
           
           {/* Quick Actions */}
           <div className="flex gap-2 mt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInputValue('Analyze my data')}
-              disabled={isLoading}
-            >
-              <FileSpreadsheet className="h-3 w-3 mr-1" />
-              Analyze
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInputValue('Help me create a formula')}
-              disabled={isLoading}
-            >
-              <Calculator className="h-3 w-3 mr-1" />
-              Formula
-            </Button>
+            {isChatMode ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInputValue('Tell me about my data')}
+                  disabled={isLoading}
+                >
+                  <FileSpreadsheet className="h-3 w-3 mr-1" />
+                  About Data
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInputValue('What insights can you find?')}
+                  disabled={isLoading}
+                >
+                  💡
+                  Insights
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInputValue('Analyze my data')}
+                  disabled={isLoading}
+                >
+                  <FileSpreadsheet className="h-3 w-3 mr-1" />
+                  Analyze
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInputValue('Help me create a formula')}
+                  disabled={isLoading}
+                >
+                  <Calculator className="h-3 w-3 mr-1" />
+                  Formula
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </CardContent>
