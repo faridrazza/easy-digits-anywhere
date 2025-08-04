@@ -42,7 +42,7 @@ const Index = () => {
           </h2>
           
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            छोटे व्यापारियों के लिए बनाया गया सरल समाधान। अपने हस्तलिखित डेटा को डिजिटल Excel फाइलों में तुरंत बदलें।
+            छोटे व्यापारियों के लिए बनाया गया सरल समाधान। अपने हस्तलिखित डेटा या PDF फाइलों को डिजिटल Excel फाइलों में तुरंत बदलें।
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -76,8 +76,8 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  एक साथ कई तस्वीरें अपलोड करें। तेज़ और आसान प्रोसेसिंग।
-                  Upload multiple images at once. Fast and easy processing.
+                  एक साथ कई तस्वीरें या PDF अपलोड करें। तेज़ और आसान प्रोसेसिंग।
+                  Upload multiple images or PDFs at once. Fast and easy processing.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -89,8 +89,8 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  उन्नत OCR तकनीक। हिंदी और अंग्रेजी दोनों भाषाओं में काम करता है।
-                  Advanced OCR technology. Works with both Hindi and English.
+                  उन्नत OCR तकनीक। तस्वीरों और PDF दोनों के साथ काम करता है। हिंदी और अंग्रेजी दोनों भाषाओं में।
+                  Advanced OCR technology. Works with both images and PDFs. Supports Hindi and English.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -164,8 +164,8 @@ const Index = () => {
               </div>
               <h4 className="text-xl font-semibold mb-2">अपलोड करें / Upload</h4>
               <p className="text-muted-foreground">
-                अपनी हस्तलिखित रजिस्टर की तस्वीरें अपलोड करें
-                Upload images of your handwritten registers
+                अपनी हस्तलिखित रजिस्टर की तस्वीरें या PDF अपलोड करें
+                Upload images or PDFs of your handwritten registers
               </p>
             </div>
 

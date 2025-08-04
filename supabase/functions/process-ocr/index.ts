@@ -15,6 +15,7 @@ interface OCRRequest {
   fileUrl: string;
   documentId: string;
   userId: string;
+  fileType?: string;
 }
 
 interface ExtractedTableData {
@@ -30,9 +31,9 @@ serve(async (req) => {
   }
 
   try {
-    const { fileUrl, documentId, userId } = await req.json() as OCRRequest
+    const { fileUrl, documentId, userId, fileType } = await req.json() as OCRRequest
     
-    console.log('Processing OCR request:', { fileUrl, documentId, userId })
+    console.log('Processing OCR request:', { fileUrl, documentId, userId, fileType })
     
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -67,8 +68,15 @@ serve(async (req) => {
 
     if (jobError) throw jobError
 
-    // Process with Google Vision API
-    const extractedData = await processWithGoogleVision(fileUrl)
+    // Process based on file type
+    let extractedData: ExtractedTableData;
+    if (fileType === 'application/pdf') {
+      console.log('Processing PDF file with Gemini API')
+      extractedData = await processWithGeminiPDF(fileUrl)
+    } else {
+      console.log('Processing image file with Google Vision API')
+      extractedData = await processWithGoogleVision(fileUrl)
+    }
     
     // Update progress
     await supabaseClient
@@ -452,6 +460,104 @@ Return:
     }
   } catch (error) {
     console.error('Gemini Vision error:', error)
+  }
+  
+  return getEmptyData()
+}
+
+// Process PDF files directly with Gemini 2.5 Flash
+async function processWithGeminiPDF(pdfUrl: string): Promise<ExtractedTableData> {
+  const apiKey = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY')
+  
+  if (!apiKey) {
+    console.log('No Gemini API key found, returning empty data')
+    return getEmptyData()
+  }
+  
+  try {
+    // Download PDF file
+    console.log('Downloading PDF from:', pdfUrl)
+    const pdfResponse = await fetch(pdfUrl)
+    if (!pdfResponse.ok) {
+      throw new Error(`Failed to download PDF: ${pdfResponse.status} ${pdfResponse.statusText}`)
+    }
+    
+    const pdfBuffer = await pdfResponse.arrayBuffer()
+    const base64PDF = arrayBufferToBase64(pdfBuffer)
+    console.log('PDF downloaded and converted to base64, size:', pdfBuffer.byteLength)
+    
+    // Call Gemini 2.5 Flash for PDF processing (using the latest model for better PDF support)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            {
+              text: `Extract all table data from this PDF document and return it as JSON.
+
+Format (no markdown, no explanation):
+{
+  "headers": ["Column1", "Column2", "Column3"],
+  "rows": [
+    {"Column1": "value1", "Column2": "value2", "Column3": "value3"},
+    {"Column1": "value4", "Column2": "value5", "Column3": "value6"}
+  ]
+}
+
+RULES:
+1. Extract all tables found in the PDF
+2. Use exact header names from the document
+3. Include all rows of data from all tables
+4. All values as strings
+5. Empty cells = ""
+6. If multiple tables exist, combine them if they have the same structure, otherwise use the largest/most complete table
+7. NO demo/test data - only extract what's actually in the PDF
+
+For handwritten registers or forms:
+- Recognize handwritten text accurately
+- Maintain proper data relationships
+- Handle multiple pages if present`
+            },
+            {
+              inline_data: {
+                mime_type: "application/pdf",
+                data: base64PDF
+              }
+            }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          topK: 1,
+          topP: 0.1,
+          maxOutputTokens: 8192,
+        }
+      })
+    })
+    
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Gemini PDF API error: ${error}`)
+    }
+    
+    const result = await response.json()
+    const content = result.candidates[0].content.parts[0].text
+    
+    // Extract JSON from the response
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      const parsedData = JSON.parse(jsonMatch[0])
+      return {
+        headers: parsedData.headers || [],
+        rows: parsedData.rows || [],
+        confidence: 90 // Slightly lower confidence than images as PDFs can be more complex
+      }
+    }
+  } catch (error) {
+    console.error('Gemini PDF processing error:', error)
   }
   
   return getEmptyData()

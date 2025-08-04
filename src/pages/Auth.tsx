@@ -88,7 +88,7 @@ export default function Auth() {
             </h1>
           </div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            हस्तलिखित रजिस्टर को Excel में बदलें | Convert handwritten registers to Excel tables
+            हस्तलिखित रजिस्टर या PDF को Excel में बदलें | Convert handwritten registers or PDFs to Excel tables
           </p>
           
           {/* Feature highlights */}

@@ -1,0 +1,35 @@
+Google Gemini Flash (including Gemini 2.5 Flash and 2.0 Flash) can support exactly what you’re describing—you can enable users to upload PDF files (as well as images), and Gemini Flash can accurately extract data from those PDFs for display on your dashboard, just as you already do with images.
+
+Key Points about Gemini Flash PDF Support (2025):
+Native PDF Processing: Gemini 2.5 Flash and 2.0 Flash both support the application/pdf MIME type. You can upload a PDF—either as a direct file, as bytes, or using their File API up to large limits—and Gemini will natively understand and process the entire document.
+
+Table and Structured Data Extraction: Gemini Flash can extract not just general text, but also tables, structured data, form fields, and content within complex layouts (including images, headers, footers, charts, and multi-column data). It’s capable of outputting the information in a structured manner well-suited for rendering as Excel tables or on dashboards.
+
+Scalable for Long/Big PDFs: You can process very large and long PDFs (hundreds to thousands of pages) thanks to Gemini’s long context and multimodal understanding.
+
+How It Works:
+
+The user uploads a PDF.
+
+You use the Gemini Flash API (or File API for large documents) to send the PDF for processing.
+
+In your API prompt, you can specify instructions such as “extract all tables and data in a structured format,” or even tailor for special cases like financial tables.
+
+Gemini Flash analyzes the PDF, outputs structured data (often as markdown tables, JSON or other structured response), and you then parse and display this data on your dashboard or export it as Excel.
+
+No Need for Separate OCR: You don’t need to pre-convert PDFs to images or do separate OCR—Gemini Flash handles text, scanned images, mixed-content PDFs, etc., all within its multimodal pipeline.
+
+Example Features You Can Enable with Minimal Changes:
+User uploads a PDF instead of (or as well as) images.
+
+Dashboard immediately receives the structured data Gemini extracts and displays it the same way as image-extracted data.
+
+Optionally export extracted data directly as Excel or CSV files for offline analysis.
+
+Developer Implementation:
+The process for PDFs is very similar to images. You just set the content type, and Gemini Flash does the multimodal extraction.
+
+You can batch process pages, selectively extract certain sections, automate file deletion, and more.
+
+Summary:
+Google Gemini Flash is an excellent, modern AI solution for supporting PDF data extraction in your app, with native support and advanced structured data understanding. You can confidently extend your current flow (user uploads, data extraction, dashboard display) to handle PDFs—Gemini Flash is designed for this use case and offers high reliability with simple API integration

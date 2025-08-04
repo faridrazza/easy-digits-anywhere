@@ -140,7 +140,7 @@ export default function Dashboard() {
     }
   };
 
-  const processImages = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const processFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -191,7 +191,8 @@ export default function Dashboard() {
             body: {
               fileUrl: signedUrlData.signedUrl,
               documentId: document.id,
-              userId: user.id
+              userId: user.id,
+              fileType: file.type
             }
           });
 
@@ -387,19 +388,19 @@ export default function Dashboard() {
               हस्तलिखित रजिस्टर अपलोड करें / Upload Handwritten Register
             </CardTitle>
             <CardDescription>
-              तस्वीरें अपलोड करें और उच्च सटीकता के साथ डेटा निकालें / Upload images and extract data with high accuracy
+              तस्वीरें या PDF अपलोड करें और उच्च सटीकता के साथ डेटा निकालें / Upload images or PDFs and extract data with high accuracy
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="border-2 border-dashed border-primary/25 rounded-lg p-8 text-center">
               <Upload className="h-12 w-12 mx-auto text-primary mb-4" />
-              <h3 className="text-lg font-semibold mb-2">तस्वीरें यहाँ छोड़ें / Drop Images Here</h3>
+              <h3 className="text-lg font-semibold mb-2">तस्वीरें या PDF यहाँ छोड़ें / Drop Images or PDFs Here</h3>
               <p className="text-muted-foreground mb-4">या क्लिक करके चुनें / or click to select</p>
               <input
                 type="file"
                 multiple
-                accept="image/*"
-                onChange={processImages}
+                accept="image/*,application/pdf"
+                onChange={processFiles}
                 className="hidden"
                 id="file-upload"
                 disabled={isProcessing}
@@ -416,12 +417,12 @@ export default function Dashboard() {
                       प्रोसेसिंग... / Processing...
                     </>
                   ) : (
-                    "तस्वीरें चुनें / Select Images"
+                    "तस्वीरें या PDF चुनें / Select Images or PDFs"
                   )}
                 </label>
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                Google Vision API द्वारा संचालित / Powered by Google Vision API
+                Google Vision & Gemini API द्वारा संचालित / Powered by Google Vision & Gemini API
               </p>
             </div>
             
@@ -635,7 +636,7 @@ export default function Dashboard() {
                       <div>
                         <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
                         <p>कोई डेटा नहीं मिला / No data found</p>
-                        <p className="text-sm">तस्वीरें अपलोड करके शुरू करें / Start by uploading images</p>
+                        <p className="text-sm">तस्वीरें या PDF अपलोड करके शुरू करें / Start by uploading images or PDFs</p>
                       </div>
                     ) : (
                       <div>
@@ -656,11 +657,11 @@ export default function Dashboard() {
           <Card className="shadow-card">
             <CardContent className="py-12 text-center">
               <Upload className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-              <h3 className="text-xl font-semibold mb-2">अपनी पहली तस्वीर अपलोड करें / Upload Your First Image</h3>
+              <h3 className="text-xl font-semibold mb-2">अपनी पहली फाइल अपलोड करें / Upload Your First File</h3>
               <p className="text-muted-foreground mb-4">
-                हस्तलिखित रजिस्टर की तस्वीरें अपलोड करें और उच्च सटीकता के साथ डेटा निकालें
+                हस्तलिखित रजिस्टर की तस्वीरें या PDF अपलोड करें और उच्च सटीकता के साथ डेटा निकालें
                 <br />
-                Upload handwritten register images and extract data with high accuracy
+                Upload handwritten register images or PDFs and extract data with high accuracy
               </p>
               <Button className="bg-gradient-to-r from-primary to-primary-glow">
                 <label htmlFor="file-upload" className="cursor-pointer">
