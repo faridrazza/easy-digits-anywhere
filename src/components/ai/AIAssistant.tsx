@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   Send, 
   Bot, 
@@ -45,6 +46,7 @@ export default function AIAssistant({
   onDataUpdate, 
   className = "" 
 }: AIAssistantProps) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ExtendedAIMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,8 +54,10 @@ export default function AIAssistant({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    initializeConversation();
-  }, [documentId]);
+    if (user && documentId) {
+      initializeConversation();
+    }
+  }, [documentId, user]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -62,23 +66,30 @@ export default function AIAssistant({
   }, [messages]);
 
   const initializeConversation = async () => {
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
     try {
-      // First, try to find existing conversation
+      // First, try to find existing conversation for this document (RLS automatically filters by user)
       let { data: existingConversation, error: fetchError } = await supabase
         .from('ai_conversations')
         .select('*')
         .eq('document_id', documentId)
-        .single();
+        .maybeSingle();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
+      if (fetchError) {
+        console.error('Fetch conversation error:', fetchError);
         throw fetchError;
       }
 
       if (!existingConversation) {
-        // Create new conversation
+        // Create new conversation with user_id
         const { data: newConversation, error: createError } = await supabase
           .from('ai_conversations')
           .insert({
+            user_id: user.id,
             document_id: documentId,
             title: 'AI Assistant Chat',
             context_summary: `Working with file containing ${fileData.headers.length} columns and ${fileData.rows.length} rows`
@@ -229,6 +240,26 @@ export default function AIAssistant({
       default: return null;
     }
   };
+
+  // Show loading state while user is being authenticated
+  if (!user) {
+    return (
+      <Card className={`h-full flex flex-col ${className}`}>
+        <CardHeader className="flex-shrink-0 pb-3">
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            AI Assistant
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex items-center justify-center">
+          <div className="text-center text-muted-foreground">
+            <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin" />
+            <p>Authenticating...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={`h-full flex flex-col ${className}`}>

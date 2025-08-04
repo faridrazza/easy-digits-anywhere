@@ -38,20 +38,45 @@ serve(async (req) => {
   }
 
   try {
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response('Missing authorization header', { 
+        status: 401, 
+        headers: corsHeaders 
+      })
+    }
+
+    // Create Supabase client for Edge Function with user context
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
       }
     )
 
-    // Get the user from the request
+    // Extract JWT token from Authorization header
+    const token = authHeader.replace('Bearer ', '')
+    
+    // Get the user from the JWT token
     const {
       data: { user },
-    } = await supabaseClient.auth.getUser()
+      error: authError
+    } = await supabaseClient.auth.getUser(token)
+
+    console.log('Auth check:', { 
+      hasAuthHeader: !!authHeader,
+      hasToken: !!token,
+      user: user?.id || 'none',
+      authError: authError?.message || 'none'
+    })
 
     if (!user) {
       return new Response('Unauthorized', { 

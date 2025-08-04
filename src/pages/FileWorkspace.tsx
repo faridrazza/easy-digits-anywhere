@@ -309,8 +309,8 @@ export default function FileWorkspace() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-12 text-center">#</TableHead>
-                        {fileData.data.headers.map((header) => (
-                          <TableHead key={header} className="font-semibold min-w-32">
+                        {fileData.data.headers.map((header, headerIndex) => (
+                          <TableHead key={`header-${headerIndex}-${header}`} className="font-semibold min-w-32">
                             {header}
                           </TableHead>
                         ))}
@@ -322,9 +322,9 @@ export default function FileWorkspace() {
                           <TableCell className="text-center text-muted-foreground font-medium">
                             {rowIndex + 1}
                           </TableCell>
-                          {fileData.data.headers.map((header) => (
+                          {fileData.data.headers.map((header, headerIndex) => (
                             <TableCell 
-                              key={header} 
+                              key={`cell-${rowIndex}-${headerIndex}-${header}`} 
                               className="cursor-pointer hover:bg-muted/50 transition-colors"
                               onClick={() => startEditingCell(rowIndex, header, row[header] || '')}
                             >
