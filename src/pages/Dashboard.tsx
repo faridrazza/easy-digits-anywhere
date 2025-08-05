@@ -172,12 +172,13 @@ export default function Dashboard() {
               .insert({
                 user_id: user.id,
                 document_id: document.id,
+                processing_job_id: null,
                 data: {
                   headers,
                   rows: excelData
                 },
                 confidence: 100, // Excel parsing is 100% accurate
-                source_type: 'excel'
+                is_edited: false
               });
 
             if (extractedError) throw extractedError;
