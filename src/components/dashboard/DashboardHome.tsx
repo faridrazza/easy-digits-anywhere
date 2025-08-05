@@ -72,12 +72,12 @@ export default function DashboardHome({
         <CardContent>
           <div className="border-2 border-dashed border-primary/25 rounded-lg p-8 text-center">
             <Upload className="h-12 w-12 mx-auto text-primary mb-4" />
-            <h3 className="text-lg font-semibold mb-2">तस्वीरें या PDF यहाँ छोड़ें / Drop Images or PDFs Here</h3>
+            <h3 className="text-lg font-semibold mb-2">तस्वीरें, PDF या Excel फाइलें यहाँ छोड़ें / Drop Images, PDFs or Excel Files Here</h3>
             <p className="text-muted-foreground mb-4">या क्लिक करके चुनें / or click to select</p>
             <input
               type="file"
               multiple
-              accept="image/*,application/pdf"
+              accept="image/*,application/pdf,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               onChange={onFileUpload}
               className="hidden"
               id="file-upload"
@@ -95,7 +95,7 @@ export default function DashboardHome({
                     प्रोसेसिंग... / Processing...
                   </>
                 ) : (
-                  "तस्वीरें या PDF चुनें / Select Images or PDFs"
+                  "तस्वीरें, PDF या Excel चुनें / Select Images, PDFs or Excel"
                 )}
               </label>
             </Button>

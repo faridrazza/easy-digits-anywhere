@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { EnhancedTable } from '@/components/ui/enhanced-table';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -303,64 +304,13 @@ export default function FileWorkspace() {
                   Click on any cell to edit. Changes are saved automatically.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="rounded-md border overflow-auto max-h-[calc(100vh-200px)]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12 text-center">#</TableHead>
-                        {fileData.data.headers.map((header, headerIndex) => (
-                          <TableHead key={`header-${headerIndex}-${header}`} className="font-semibold min-w-32">
-                            {header}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fileData.data.rows.map((row, rowIndex) => (
-                        <TableRow key={rowIndex} className="hover:bg-muted/50">
-                          <TableCell className="text-center text-muted-foreground font-medium">
-                            {rowIndex + 1}
-                          </TableCell>
-                          {fileData.data.headers.map((header, headerIndex) => (
-                            <TableCell 
-                              key={`cell-${rowIndex}-${headerIndex}-${header}`} 
-                              className="cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => startEditingCell(rowIndex, header, row[header] || '')}
-                            >
-                              {editingCell && editingCell.rowIndex === rowIndex && editingCell.column === header ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    value={editingCell.value}
-                                    onChange={(e) => setEditingCell({ ...editingCell, value: e.target.value })}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') saveEdit();
-                                      if (e.key === 'Escape') cancelEdit();
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="h-8 px-2"
-                                    autoFocus
-                                  />
-                                  <Button size="sm" variant="ghost" onClick={saveEdit}>
-                                    <Save className="h-3 w-3" />
-                                  </Button>
-                                  <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-between group min-h-8">
-                                  <span className="flex-1">{row[header] || '-'}</span>
-                                  <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ml-2" />
-                                </div>
-                              )}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+              <CardContent className="p-0">
+                <EnhancedTable
+                  data={fileData.data}
+                  onDataChange={(newData) => updateFileData(newData)}
+                  showSpreadsheetToggle={true}
+                  className="border-0 rounded-none"
+                />
               </CardContent>
             </Card>
           </div>

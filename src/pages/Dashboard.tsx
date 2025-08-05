@@ -131,51 +131,111 @@ export default function Dashboard() {
       let processedCount = 0;
 
       for (const file of files) {
-        // Upload to Supabase Storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}_${file.name}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(fileName, file);
+        // Check if it's an Excel file
+        const isExcelFile = file.type.includes('spreadsheet') || 
+                           file.name.endsWith('.xlsx') || 
+                           file.name.endsWith('.xls');
 
-        if (uploadError) throw uploadError;
+        if (isExcelFile) {
+          // Process Excel file directly without OCR
+          try {
+            const excelData = await ExcelService.parseExcelFile(file);
+            
+            // Upload to storage for record keeping
+            const fileName = `${user.id}/${Date.now()}_${file.name}`;
+            const { error: uploadError } = await supabase.storage
+              .from('excel-files')
+              .upload(fileName, file);
 
-        // Save document record
-        const { data: document, error: dbError } = await supabase
-          .from('documents')
-          .insert({
-            user_id: user.id,
-            filename: file.name,
-            file_path: fileName,
-            file_size: file.size,
-            file_type: file.type,
-            processing_status: 'pending'
-          })
-          .select()
-          .single();
+            if (uploadError) throw uploadError;
 
-        if (dbError) throw dbError;
+            // Save document record
+            const { data: document, error: dbError } = await supabase
+              .from('documents')
+              .insert({
+                user_id: user.id,
+                filename: file.name,
+                file_path: fileName,
+                file_size: file.size,
+                file_type: file.type,
+                processing_status: 'completed'
+              })
+              .select()
+              .single();
 
-        // Get signed URL for the file (valid for 1 hour)
-        const { data: signedUrlData, error: urlError } = await supabase.storage
-          .from('documents')
-          .createSignedUrl(fileName, 3600); // 1 hour expiry
-        
-        if (urlError) throw urlError;
+            if (dbError) throw dbError;
 
-        // Call Edge Function for OCR processing
-        const { data: functionData, error: functionError } = await supabase.functions
-          .invoke('process-ocr', {
-            body: {
-              fileUrl: signedUrlData.signedUrl,
-              documentId: document.id,
-              userId: user.id,
-              fileType: file.type
-            }
-          });
+            // Save extracted data directly
+            const headers = excelData.length > 0 ? Object.keys(excelData[0]) : [];
+            const { error: extractedError } = await supabase
+              .from('extracted_data')
+              .insert({
+                user_id: user.id,
+                document_id: document.id,
+                data: {
+                  headers,
+                  rows: excelData
+                },
+                confidence: 100, // Excel parsing is 100% accurate
+                source_type: 'excel'
+              });
 
-        if (functionError) throw functionError;
+            if (extractedError) throw extractedError;
+
+          } catch (error) {
+            console.error('Excel processing error:', error);
+            toast({
+              title: "Excel त्रुटि / Excel Error",
+              description: `${file.name} को प्रोसेस करने में असफल / Failed to process ${file.name}`,
+              variant: "destructive"
+            });
+          }
+        } else {
+          // Process with OCR for images/PDFs
+          const fileName = `${user.id}/${Date.now()}_${file.name}`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documents')
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+
+          // Save document record
+          const { data: document, error: dbError } = await supabase
+            .from('documents')
+            .insert({
+              user_id: user.id,
+              filename: file.name,
+              file_path: fileName,
+              file_size: file.size,
+              file_type: file.type,
+              processing_status: 'pending'
+            })
+            .select()
+            .single();
+
+          if (dbError) throw dbError;
+
+          // Get signed URL for the file (valid for 1 hour)
+          const { data: signedUrlData, error: urlError } = await supabase.storage
+            .from('documents')
+            .createSignedUrl(fileName, 3600);
+          
+          if (urlError) throw urlError;
+
+          // Call Edge Function for OCR processing
+          const { data: functionData, error: functionError } = await supabase.functions
+            .invoke('process-ocr', {
+              body: {
+                fileUrl: signedUrlData.signedUrl,
+                documentId: document.id,
+                userId: user.id,
+                fileType: file.type
+              }
+            });
+
+          if (functionError) throw functionError;
+        }
 
         processedCount++;
         setProcessingProgress((processedCount / totalFiles) * 100);
