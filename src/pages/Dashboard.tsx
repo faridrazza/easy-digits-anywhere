@@ -193,49 +193,49 @@ export default function Dashboard() {
           }
         } else {
           // Process with OCR for images/PDFs
-          const fileName = `${user.id}/${Date.now()}_${file.name}`;
-          
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('documents')
-            .upload(fileName, file);
+        const fileName = `${user.id}/${Date.now()}_${file.name}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(fileName, file);
 
-          if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-          // Save document record
-          const { data: document, error: dbError } = await supabase
-            .from('documents')
-            .insert({
-              user_id: user.id,
-              filename: file.name,
-              file_path: fileName,
-              file_size: file.size,
-              file_type: file.type,
-              processing_status: 'pending'
-            })
-            .select()
-            .single();
+        // Save document record
+        const { data: document, error: dbError } = await supabase
+          .from('documents')
+          .insert({
+            user_id: user.id,
+            filename: file.name,
+            file_path: fileName,
+            file_size: file.size,
+            file_type: file.type,
+            processing_status: 'pending'
+          })
+          .select()
+          .single();
 
-          if (dbError) throw dbError;
+        if (dbError) throw dbError;
 
-          // Get signed URL for the file (valid for 1 hour)
-          const { data: signedUrlData, error: urlError } = await supabase.storage
-            .from('documents')
+        // Get signed URL for the file (valid for 1 hour)
+        const { data: signedUrlData, error: urlError } = await supabase.storage
+          .from('documents')
             .createSignedUrl(fileName, 3600);
-          
-          if (urlError) throw urlError;
+        
+        if (urlError) throw urlError;
 
-          // Call Edge Function for OCR processing
-          const { data: functionData, error: functionError } = await supabase.functions
-            .invoke('process-ocr', {
-              body: {
-                fileUrl: signedUrlData.signedUrl,
-                documentId: document.id,
+        // Call Edge Function for OCR processing
+        const { data: functionData, error: functionError } = await supabase.functions
+          .invoke('process-ocr', {
+            body: {
+              fileUrl: signedUrlData.signedUrl,
+              documentId: document.id,
                 userId: user.id,
                 fileType: file.type
-              }
-            });
+            }
+          });
 
-          if (functionError) throw functionError;
+        if (functionError) throw functionError;
         }
 
         processedCount++;
